@@ -60,19 +60,23 @@ echo
 # printf '*%.s' {1..85}
 # printf '\n'
 
-echo "*************************************************************************************"
-echo "*************************************************************************************"
+echo "********************************************************************************"
+echo "********************************************************************************"
 echo
-echo "  Disclaimer: This is not an indication if you will pass the passoff with the TA's"
-echo "     This script is designed to help minimize testing with multiple test cases"
+echo "                                Disclaimer:"
+echo "     This is not an indication if you will pass the passoff with the TA's"
+echo "   This script is designed to help minimize testing with multiple test cases"
 echo
-echo "*************************************************************************************"
-echo "*************************************************************************************"
+echo "********************************************************************************"
+echo "********************************************************************************"
 
 # compile the program using the first argument as the output filename if the compile flag was set
 if [ ${compile} = true ]; then
   echo -e "\n  Compiling..."
-  rm "$inputName"
+  if [ -f $inputName ]; then
+    rm "$inputName"
+  fi
+
   compilation_output=$(g++ -g -Wall -Werror -std=c++17 *.cpp -o "$inputName")
 
   if [[ $? != 0 ]]; then
@@ -106,7 +110,7 @@ if [ ${complexityTest} = true ]; then
 fi
 
 echo
-echo Starting Testbench on $1
+echo " Starting Testbench on $1"
 
 echo
 
@@ -148,7 +152,7 @@ if [ -f ${inputName%"./"} ]; then
       result=$(${inputName} ${filename})
 
       extra=${filename:8}
-      printf "TESTING in"${extra%.txt}": "
+      printf " TESTING in"${extra%.txt}": "
       outFile="out"${filename:8}
 
       if [ ! -f "output/"$outFile ]; then
