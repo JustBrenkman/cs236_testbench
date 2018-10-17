@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 
 # Copyright 2018 Benjamin Brenkman
 #
@@ -25,7 +26,39 @@ NC='\033[0m' # No Color
 
 inputName=$1
 
+compile=false
+memCheck=false
+complexityTest=false
+
+while [ $# -gt 0 ];
+do
+key="$1"
+
+case ${key} in
+    -c|--compile)
+    compile=true
+    shift
+    ;;
+    -m|--memcheck)
+    memCheck=true
+    shift
+    ;;
+    -x|--test-complexity)
+    complexityTest=true
+    shift
+    ;;
+    *)
+    shift
+    ;;
+esac
+done
+
+
 echo
+
+# just another way to print a bunch of the same character with printf
+# printf '*%.s' {1..85}
+# printf '\n'
 
 echo "*************************************************************************************"
 echo "*************************************************************************************"
@@ -35,6 +68,43 @@ echo "     This script is designed to help minimize testing with multiple test c
 echo
 echo "*************************************************************************************"
 echo "*************************************************************************************"
+
+# compile the program using the first argument as the output filename if the compile flag was set
+if [ ${compile} = true ]; then
+  echo -e "\n  Compiling..."
+  rm "$inputName"
+  compilation_output=$(g++ -g -Wall -Werror -std=c++17 *.cpp -o "$inputName")
+
+  if [[ $? != 0 ]]; then
+    echo -e "  ${RED}COMPILATION ERRORS. Exiting...${NC}";
+    exit
+  fi
+
+  echo -e "  ${GREEN}Compilation complete.${NC}\n"
+fi
+
+# run the complexiy test if the complexity flag was set
+if [ ${complexityTest} = true ]; then
+  echo -e "  Testing complexity..."
+  complexity_output=$(pmccabe *.h *.cpp)
+
+  if [ $? != 0 ]; then
+    echo -e "  ${RED}ERROR: could not complete complexity test. Exiting...${NC}";
+    echo "${complexity_output}"
+    exit
+  fi
+
+  errors=$(awk '($1>8)' <<< ${complexity_output})
+
+  if [ -n "${errors}" ]; then
+    printf "%s:%schicken\n" "Errors" ${errors}
+    echo -e "  ${RED}Failed complexity test for the following functions:${NC}";
+    echo "${errors}"
+    exit
+  else
+    echo -e "  ${GREEN}Passed complexity test.${NC}"
+  fi
+fi
 
 echo
 echo Starting Testbench on $1
@@ -56,17 +126,28 @@ if [ ! -d "output" ]; then
 fi
 
 
-#  also check if there input executable is correct
-if [ -f ${1%"./"} ]; then
+#  also check if their input executable is correct
+if [ -f ${inputName%"./"} ]; then
   # Check if there are text cases in the input file
   if [ "$(ls input/)" ]; then
-
 
     # Start going through the input files and checking the difference
     failed=false
     for filename in input/*.txt; do
-      # First check to see if there is a maching output file
-      result=$($1 $filename)
+
+      # check for memory leaks
+      if [ ${memCheck} = true ]; then
+        valgrindOuput="$(valgrind --leak-check=yes --log-fd=1 --error-exitcode=1 ${inputName} ${filename}) ";
+        if [ $? = 1 ]; then
+          echo -e "${RED}  ERROR: valgrind detected a memory error. Exiting...\n${NC}"
+          echo -e "$valgrindOuput"
+          exit
+        fi
+      fi
+
+      # First check to see if there is a matching output file
+      result=$(${inputName} ${filename})
+
       extra=${filename:8}
       printf "TESTING in"${extra%.txt}": "
       outFile="out"${filename:8}
@@ -79,7 +160,7 @@ if [ -f ${1%"./"} ]; then
           rm "temp.txt"
         fi
         echo -e "$result" > "temp.txt"
-        if diffResults=$(diff "temp.txt" "output/"$outFile); then # Make this better by ignoring whitespaces
+        if diffResults=$(diff --ignore-all-space "temp.txt" "output/"${outFile}); then # added option --ignore-all-space (same as -w)
           if [ "$diffResults" == "" ];then
             echo -e ${GREEN}"\tPASSED"${NC}
           else
