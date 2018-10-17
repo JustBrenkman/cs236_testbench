@@ -97,7 +97,6 @@ if [ ${complexityTest} = true ]; then
   errors=$(awk '($1>8)' <<< ${complexity_output})
 
   if [ -n "${errors}" ]; then
-    printf "%s:%schicken\n" "Errors" ${errors}
     echo -e "  ${RED}Failed complexity test for the following functions:${NC}";
     echo "${errors}"
     exit
